@@ -35,9 +35,11 @@ router.get('/filter', auth, async (req, res) => {
 
 router.get('/category-breakdown', auth, async (req, res) => {
   try {
+    const mongoose = require('mongoose');
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const { startDate, endDate } = req.query;
     
-    const matchStage = { userId: req.user.id };
+    const matchStage = { userId: userId };
     if (startDate && endDate) {
       matchStage.date = {
         $gte: new Date(startDate),
@@ -66,6 +68,9 @@ router.get('/category-breakdown', auth, async (req, res) => {
 
 router.get('/insights', auth, async (req, res) => {
   try {
+    const mongoose = require('mongoose');
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+    
     const currentMonthStart = new Date();
     currentMonthStart.setDate(1);
     currentMonthStart.setHours(0, 0, 0, 0);
@@ -78,7 +83,7 @@ router.get('/insights', auth, async (req, res) => {
     const currentMonthExpenses = await Expense.aggregate([
       {
         $match: {
-          userId: req.user.id,
+          userId: userId,
           date: { $gte: currentMonthStart }
         }
       },
@@ -93,7 +98,7 @@ router.get('/insights', auth, async (req, res) => {
     const lastMonthExpenses = await Expense.aggregate([
       {
         $match: {
-          userId: req.user.id,
+          userId: userId,
           date: { $gte: lastMonthStart, $lte: lastMonthEnd }
         }
       },
@@ -122,6 +127,32 @@ router.get('/insights', auth, async (req, res) => {
         }
       }
     });
+
+    if (insights.length === 0 && currentMonthExpenses.length > 0) {
+      const totalCurrent = currentMonthExpenses.reduce((sum, c) => sum + c.total, 0);
+      const topCategories = [...currentMonthExpenses]
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 3);
+
+      topCategories.forEach((cat) => {
+        const pct = ((cat.total / totalCurrent) * 100).toFixed(1);
+        insights.push({
+          category: cat._id,
+          message: `${cat._id} leads your spending this month (${pct}% of total)`,
+          percentChange: null,
+          currentAmount: cat.total,
+          lastAmount: 0
+        });
+      });
+
+      insights.unshift({
+        category: 'Overall',
+        message: `You've spent ₹${totalCurrent.toFixed(0)} so far this month`,
+        percentChange: null,
+        currentAmount: totalCurrent,
+        lastAmount: 0
+      });
+    }
 
     res.json(insights);
   } catch (err) {
