@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,12 +18,19 @@ import { saveOfflineExpense } from '../services/offlineSync';
 const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Health', 'Other'];
 const PAYMENT_METHODS = ['Cash', 'Card', 'UPI', 'Net Banking'];
 
-export default function AddExpenseScreen({ navigation }) {
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState(CATEGORIES[0]);
-  const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS[0]);
-  const [description, setDescription] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+export default function AddExpenseScreen({ navigation, route }) {
+  const smsExpense = route?.params?.smsExpense;
+  const onSaveCallback = route?.params?.onSave;
+  
+  const [amount, setAmount] = useState(smsExpense?.amount?.toString() || '');
+  const [category, setCategory] = useState(smsExpense?.category || CATEGORIES[0]);
+  const [paymentMethod, setPaymentMethod] = useState(smsExpense?.paymentMethod || PAYMENT_METHODS[0]);
+  const [description, setDescription] = useState(smsExpense?.merchant || '');
+  const [date, setDate] = useState(
+    smsExpense?.date 
+      ? new Date(smsExpense.date).toISOString().split('T')[0] 
+      : new Date().toISOString().split('T')[0]
+  );
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -49,6 +56,11 @@ export default function AddExpenseScreen({ navigation }) {
     try {
       await addExpense(expense);
       Alert.alert('Success', 'Expense added successfully');
+      
+      if (onSaveCallback) {
+        await onSaveCallback();
+      }
+      
       navigation.goBack();
     } catch (error) {
       console.log('Error adding expense:', error);
@@ -59,6 +71,11 @@ export default function AddExpenseScreen({ navigation }) {
           'Saved Offline',
           'Expense saved locally. Will sync when online.'
         );
+        
+        if (onSaveCallback) {
+          await onSaveCallback();
+        }
+        
         navigation.goBack();
       } else {
         Alert.alert('Error', 'Failed to add expense');
@@ -76,8 +93,12 @@ export default function AddExpenseScreen({ navigation }) {
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
       >
-        <Text style={styles.headerTitle}>Add New Expense</Text>
-        <Text style={styles.headerSubtitle}>Track your spending</Text>
+        <Text style={styles.headerTitle}>
+          {smsExpense ? 'Confirm SMS Expense' : 'Add New Expense'}
+        </Text>
+        <Text style={styles.headerSubtitle}>
+          {smsExpense ? 'Review and edit detected expense' : 'Track your spending'}
+        </Text>
       </LinearGradient>
       
       <View style={styles.form}>

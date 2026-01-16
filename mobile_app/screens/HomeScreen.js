@@ -13,23 +13,27 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getExpenses, deleteExpense } from '../services/api';
 import { syncOfflineExpenses } from '../services/offlineSync';
 import { useAuth } from '../context/AuthContext';
+import { getPendingSMSExpenses } from '../services/smsReader';
 
 export default function HomeScreen({ navigation }) {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [pendingSMSCount, setPendingSMSCount] = useState(0);
   const { user, logout } = useAuth();
   const userName = user?.name || 'User';
 
   useEffect(() => {
     loadExpenses();
     syncOfflineData();
+    loadPendingSMSCount();
   }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadExpenses();
+      loadPendingSMSCount();
     });
     return unsubscribe;
   }, [navigation]);
@@ -51,6 +55,15 @@ export default function HomeScreen({ navigation }) {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const loadPendingSMSCount = async () => {
+    try {
+      const pendingExpenses = await getPendingSMSExpenses();
+      setPendingSMSCount(pendingExpenses.length);
+    } catch (error) {
+      console.log('Error loading pending SMS count:', error);
     }
   };
 
@@ -237,6 +250,26 @@ export default function HomeScreen({ navigation }) {
           onPress={() => navigation.navigate('Insights')}
         >
           <Text style={styles.insightsButtonText}>Insights</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.quickActionsContainer}>
+        <TouchableOpacity
+          style={styles.smsButton}
+          onPress={() => navigation.navigate('SMSExpenses')}
+        >
+          <View style={styles.smsButtonContent}>
+            <Text style={styles.smsButtonIcon}>📱</Text>
+            <View style={styles.smsButtonTextContainer}>
+              <Text style={styles.smsButtonTitle}>SMS Expenses</Text>
+              <Text style={styles.smsButtonSubtitle}>Auto-detected from messages</Text>
+            </View>
+            {pendingSMSCount > 0 && (
+              <View style={styles.smsBadge}>
+                <Text style={styles.smsBadgeText}>{pendingSMSCount}</Text>
+              </View>
+            )}
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -474,6 +507,55 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 36,
     fontWeight: '300',
+  },
+  quickActionsContainer: {
+    paddingHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  smsButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  smsButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  smsButtonIcon: {
+    fontSize: 32,
+    marginRight: 12,
+  },
+  smsButtonTextContainer: {
+    flex: 1,
+  },
+  smsButtonTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 3,
+  },
+  smsButtonSubtitle: {
+    fontSize: 13,
+    color: '#8E8E93',
+  },
+  smsBadge: {
+    backgroundColor: '#FF3B30',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  smsBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
 

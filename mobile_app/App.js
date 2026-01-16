@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { startSMSListener, stopSMSListener } from './services/smsReader';
 
 // Screens
 import LoginScreen from './screens/LoginScreen';
@@ -11,11 +12,24 @@ import HomeScreen from './screens/HomeScreen';
 import AddExpenseScreen from './screens/AddExpenseScreen';
 import EditExpenseScreen from './screens/EditExpenseScreen';
 import InsightsScreen from './screens/InsightsScreen';
+import SMSExpensesScreen from './screens/SMSExpensesScreen';
 
 const Stack = createNativeStackNavigator();
 
 function AppNavigator() {
   const { isLoggedIn, loading } = useAuth();
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      console.log('Starting SMS listener...');
+      startSMSListener();
+
+      return () => {
+        console.log('Stopping SMS listener...');
+        stopSMSListener();
+      };
+    }
+  }, [isLoggedIn]);
 
   if (loading) {
     return null;
@@ -58,6 +72,11 @@ function AppNavigator() {
               name="Insights" 
               component={InsightsScreen}
               options={{ title: 'Insights' }}
+            />
+            <Stack.Screen 
+              name="SMSExpenses" 
+              component={SMSExpensesScreen}
+              options={{ title: 'SMS Expenses' }}
             />
           </>
         )}
