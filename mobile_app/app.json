@@ -20,7 +20,12 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "READ_SMS",
+        "RECEIVE_SMS"
+      ],
+      "package": "com.pocketexpenseplus.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
