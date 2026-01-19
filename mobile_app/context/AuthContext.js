@@ -21,7 +21,6 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
       }
     } catch (error) {
-      console.log('Error checking login status:', error);
       setIsLoggedIn(false);
       setUser(null);
     } finally {
@@ -40,7 +39,7 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       setIsLoggedIn(true);
     } catch (error) {
-      console.log('Error saving login data:', error);
+      // Silent error handling
     }
   };
 
@@ -50,7 +49,7 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setIsLoggedIn(false);
     } catch (error) {
-      console.log('Error logging out:', error);
+      // Silent error handling
     }
   };
 

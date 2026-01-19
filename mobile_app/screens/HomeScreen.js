@@ -42,7 +42,7 @@ export default function HomeScreen({ navigation }) {
     try {
       await syncOfflineExpenses();
     } catch (error) {
-      console.log('Sync error:', error);
+      // Silent error handling
     }
   };
 
@@ -51,7 +51,7 @@ export default function HomeScreen({ navigation }) {
       const data = await getExpenses();
       setExpenses(data);
     } catch (error) {
-      console.log('Error loading expenses:', error);
+      // Silent error handling
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -63,7 +63,7 @@ export default function HomeScreen({ navigation }) {
       const pendingExpenses = await getPendingSMSExpenses();
       setPendingSMSCount(pendingExpenses.length);
     } catch (error) {
-      console.log('Error loading pending SMS count:', error);
+      // Silent error handling
     }
   };
 

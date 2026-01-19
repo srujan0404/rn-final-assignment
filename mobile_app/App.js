@@ -21,11 +21,9 @@ function AppNavigator() {
 
   useEffect(() => {
     if (isLoggedIn) {
-      console.log('Starting SMS listener...');
       startSMSListener();
 
       return () => {
-        console.log('Stopping SMS listener...');
         stopSMSListener();
       };
     }

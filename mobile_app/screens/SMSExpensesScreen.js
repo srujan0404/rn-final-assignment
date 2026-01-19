@@ -14,8 +14,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   getPendingSMSExpenses,
   updateSMSExpenseStatus,
-  deleteSMSExpense,
-  addSampleSMSExpenses,
   processSMSForExpenses,
 } from '../services/smsReader';
 import { addExpense } from '../services/api';
@@ -26,15 +24,15 @@ export default function SMSExpensesScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [processingId, setProcessingId] = useState(null);
+  const [permissionChecked, setPermissionChecked] = useState(false);
 
   useEffect(() => {
     loadExpenses();
+    checkAndRequestPermission();
 
-    // Listen for new SMS expenses detected in real-time
     const smsEventListener = DeviceEventEmitter.addListener(
       'newSMSExpenseDetected',
-      (expense) => {
-        console.log('New SMS expense detected, refreshing list...');
+      () => {
         loadExpenses();
       }
     );
@@ -51,12 +49,23 @@ export default function SMSExpensesScreen({ navigation }) {
     return unsubscribe;
   }, [navigation]);
 
+  const checkAndRequestPermission = async () => {
+    if (!permissionChecked) {
+      const hasPermission = await ensureSMSPermission(false);
+      if (hasPermission) {
+        await processSMSForExpenses(30);
+        loadExpenses();
+      }
+      setPermissionChecked(true);
+    }
+  };
+
   const loadExpenses = async () => {
     try {
       const data = await getPendingSMSExpenses();
       setExpenses(data);
     } catch (error) {
-      console.log('Error loading SMS expenses:', error);
+      // Silent error handling
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -66,12 +75,38 @@ export default function SMSExpensesScreen({ navigation }) {
   const handleRefresh = async () => {
     setRefreshing(true);
     
-    const hasPermission = await ensureSMSPermission(true);
-    if (hasPermission) {
-      await processSMSForExpenses(30);
+    try {
+      const hasPermission = await ensureSMSPermission(true);
+      
+      if (hasPermission) {
+        const detected = await processSMSForExpenses(30);
+        await loadExpenses();
+        
+        if (detected && detected.length > 0) {
+          Alert.alert(
+            'Success',
+            `Detected ${detected.length} expense${detected.length > 1 ? 's' : ''} from SMS!`,
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert(
+            'No Expenses Found',
+            'No expense transactions found in SMS.',
+            [{ text: 'OK' }]
+          );
+        }
+      } else {
+        Alert.alert(
+          'Permission Required',
+          'SMS permission is needed to detect expenses.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to process SMS.');
+    } finally {
+      setRefreshing(false);
     }
-    
-    loadExpenses();
   };
 
   const handleConfirm = async (expense) => {
@@ -87,13 +122,11 @@ export default function SMSExpensesScreen({ navigation }) {
       };
       
       await addExpense(expenseData);
-      
       await updateSMSExpenseStatus(expense.id, 'confirmed');
       
       Alert.alert('Success', 'Expense confirmed and added!');
       loadExpenses();
     } catch (error) {
-      console.error('Error confirming expense:', error);
       Alert.alert('Error', 'Failed to confirm expense');
     } finally {
       setProcessingId(null);
@@ -128,12 +161,6 @@ export default function SMSExpensesScreen({ navigation }) {
         loadExpenses();
       },
     });
-  };
-
-  const handleAddSamples = async () => {
-    setLoading(true);
-    await addSampleSMSExpenses();
-    loadExpenses();
   };
 
   const getCategoryColor = (category) => {
@@ -272,24 +299,10 @@ export default function SMSExpensesScreen({ navigation }) {
           <Text style={styles.emptyIcon}>📱</Text>
           <Text style={styles.emptyTitle}>No Detected Expenses</Text>
           <Text style={styles.emptyText}>
-            We'll automatically detect expenses from your bank SMS messages
+            Expenses are automatically detected from your bank SMS messages.
+            {'\n\n'}
+            Pull down to refresh and check for new messages.
           </Text>
-          
-          <TouchableOpacity
-            style={styles.refreshButton}
-            onPress={handleRefresh}
-          >
-            <Text style={styles.refreshButtonText}>Scan for Expenses</Text>
-          </TouchableOpacity>
-
-          {__DEV__ && (
-            <TouchableOpacity
-              style={[styles.refreshButton, { marginTop: 10 }]}
-              onPress={handleAddSamples}
-            >
-              <Text style={styles.refreshButtonText}>Add Sample Data (Dev)</Text>
-            </TouchableOpacity>
-          )}
         </View>
       ) : (
         <FlatList
@@ -360,23 +373,6 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 30,
-  },
-  refreshButton: {
-    backgroundColor: '#667EEA',
-    paddingHorizontal: 30,
-    paddingVertical: 14,
-    borderRadius: 12,
-    shadowColor: '#667EEA',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  refreshButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   listContent: {
     padding: 16,
@@ -514,4 +510,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

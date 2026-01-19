@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -52,7 +53,6 @@ export default function EditExpenseScreen({ route, navigation }) {
       Alert.alert('Success', 'Expense updated successfully');
       navigation.goBack();
     } catch (error) {
-      console.log('Error updating expense:', error);
       Alert.alert('Error', 'Failed to update expense');
     } finally {
       setLoading(false);
@@ -60,7 +60,16 @@ export default function EditExpenseScreen({ route, navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
       <LinearGradient
         colors={['#FFA07A', '#FF6347']}
         start={{ x: 0, y: 0 }}
@@ -157,7 +166,8 @@ export default function EditExpenseScreen({ route, navigation }) {
           </LinearGradient>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -165,6 +175,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FD',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 30,
   },
   headerGradient: {
     paddingTop: 60,

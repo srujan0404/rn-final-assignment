@@ -20,6 +20,15 @@ api.interceptors.request.use(
   }
 );
 
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 export const register = async (name, email, password) => {
   const response = await api.post('/auth/register', { name, email, password });
   return response.data;

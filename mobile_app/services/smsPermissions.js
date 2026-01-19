@@ -1,14 +1,44 @@
-import { Platform, PermissionsAndroid, Alert } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+let PermissionsAndroid = null;
+try {
+  PermissionsAndroid = require('react-native').PermissionsAndroid;
+} catch (error) {
+  // PermissionsAndroid not available
+}
+
 const SMS_PERMISSION_KEY = 'sms_permission_granted';
+
+const isExpoGo = () => {
+  return (
+    Platform.OS === 'android' &&
+    (PermissionsAndroid === null ||
+     PermissionsAndroid === undefined ||
+     typeof PermissionsAndroid.check !== 'function')
+  );
+};
 
 export const checkSMSPermission = async () => {
   if (Platform.OS !== 'android') {
     return false;
   }
 
+  if (isExpoGo()) {
+    try {
+      const permission = await AsyncStorage.getItem(SMS_PERMISSION_KEY);
+      const hasPermission = permission === 'expo_go' || permission === 'true';
+      return hasPermission;
+    } catch (error) {
+      return false;
+    }
+  }
+
   try {
+    if (!PermissionsAndroid || !PermissionsAndroid.check) {
+      return false;
+    }
+
     const granted = await PermissionsAndroid.check(
       PermissionsAndroid.PERMISSIONS.READ_SMS
     );
@@ -19,12 +49,14 @@ export const checkSMSPermission = async () => {
     
     return granted;
   } catch (error) {
-    console.error('Error checking SMS permission:', error);
     return false;
   }
 };
 
 export const requestSMSPermission = async () => {
+  const isExpoGo = Platform.OS === 'android' && 
+    (typeof PermissionsAndroid === 'undefined' || PermissionsAndroid.check === undefined);
+
   if (Platform.OS !== 'android') {
     Alert.alert(
       'Not Available',
@@ -32,6 +64,11 @@ export const requestSMSPermission = async () => {
       [{ text: 'OK' }]
     );
     return false;
+  }
+
+  if (isExpoGo) {
+    await AsyncStorage.setItem(SMS_PERMISSION_KEY, 'expo_go');
+    return true;
   }
 
   try {
@@ -56,7 +93,10 @@ export const requestSMSPermission = async () => {
     
     return isGranted;
   } catch (error) {
-    console.error('Error requesting SMS permission:', error);
+    if (isExpoGo) {
+      await AsyncStorage.setItem(SMS_PERMISSION_KEY, 'expo_go');
+      return true;
+    }
     return false;
   }
 };
@@ -71,21 +111,33 @@ export const hasUserDeniedPermission = async () => {
 };
 
 export const showPermissionRationale = async () => {
+  const inExpoGo = isExpoGo();
+
+  const message = inExpoGo
+    ? 'Test Mode\n\nSMS reading uses mock data for testing in Expo Go.\n\nTap "Enable" to start!'
+    : 'Allow PocketExpense+ to read SMS messages to automatically track expenses from bank transaction alerts.\n\nYour privacy is protected - SMS data stays on your device.';
+
   return new Promise((resolve) => {
     Alert.alert(
       'Enable Auto-Expense Detection',
-      'Allow PocketExpense+ to read SMS messages to automatically track expenses from bank transaction alerts.\n\n✓ Saves time\n✓ Accurate tracking\n✓ Never miss an expense\n\nYour privacy is protected - SMS data stays on your device.',
+      message,
       [
         {
           text: 'Not Now',
           style: 'cancel',
-          onPress: () => resolve(false),
+          onPress: () => {
+            resolve(false);
+          },
         },
         {
           text: 'Enable',
           onPress: async () => {
-            const granted = await requestSMSPermission();
-            resolve(granted);
+            try {
+              const granted = await requestSMSPermission();
+              resolve(granted);
+            } catch (error) {
+              resolve(false);
+            }
           },
         },
       ]
@@ -116,7 +168,6 @@ export const resetPermissionStatus = async () => {
   try {
     await AsyncStorage.removeItem(SMS_PERMISSION_KEY);
   } catch (error) {
-    console.error('Error resetting permission status:', error);
+    // Silent error handling
   }
 };
-

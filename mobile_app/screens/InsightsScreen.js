@@ -34,7 +34,7 @@ export default function InsightsScreen() {
       setInsights(insightsData);
       setBreakdown(breakdownData);
     } catch (error) {
-      console.log('Error loading insights:', error);
+      // Silent error handling
     } finally {
       setLoading(false);
       setRefreshing(false);

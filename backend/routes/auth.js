@@ -6,7 +6,13 @@ const User = require('../models/User');
 
 router.post('/register', async (req, res) => {
   try {
+    console.log('Registration attempt:', { email: req.body.email, name: req.body.name });
     const { email, password, name } = req.body;
+
+    if (!email || !password || !name) {
+      console.log('Missing fields in registration');
+      return res.status(400).json({ message: 'Please provide all fields' });
+    }
 
     let user = await User.findOne({ email });
     if (user) {
@@ -47,7 +53,13 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
+    console.log('Login attempt for:', req.body.email);
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      console.log('Missing email or password in login');
+      return res.status(400).json({ message: 'Please provide email and password' });
+    }
 
     // Check if user exists
     const user = await User.findOne({ email });
